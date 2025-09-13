@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forest API Documentation</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #f1f1f1;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background-color: #1e1e1e;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    h1, h2, h3 {
+      color: #00ffcc;
+    }
+    code {
+      background-color: #2e2e2e;
+      color: #9cdcfe;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    pre {
+      background-color: #2e2e2e;
+      padding: 10px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    table, th, td {
+      border: 1px solid #444;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌲 Forest API Documentation</h1>
+
+    <h2>Endpoint</h2>
+    <p><code>GET /api/forest/&lt;forest_id&gt;/</code></p>
+
+    <h2>Description</h2>
+    <p>Retrieves environmental metrics for a specific forest such as NDVI, forest area, density, change over time, and year. You can filter the results by year using query parameters.</p>
+
+    <h2>Forest ID Reference</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Forest ID</th>
+          <th>Forest Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Mt. Kenya Forest</td></tr>
+        <tr><td>2</td><td>Mau Forest</td></tr>
+        <tr><td>4</td><td>Aberdare Forest</td></tr>
+        <tr><td>5</td><td>Kakamega Forest</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Parameters</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Type</th>
+          <th>Required</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>forest_id</code></td>
+          <td>integer</td>
+          <td>Yes</td>
+          <td>ID of the forest (see Forest ID Reference)</td>
+        </tr>
+        <tr>
+          <td><code>start_year</code></td>
+          <td>integer</td>
+          <td>No</td>
+          <td>Filter to include only data from this year onwards</td>
+        </tr>
+        <tr>
+          <td><code>end_year</code></td>
+          <td>integer</td>
+          <td>No</td>
+          <td>Filter to include only data up to this year</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Returned Fields</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>ndvi</code></td><td>Normalized Difference Vegetation Index (greenness indicator)</td></tr>
+        <tr><td><code>area</code></td><td>Forest area in square kilometers</td></tr>
+        <tr><td><code>density</code></td><td>Forest density in percentage</td></tr>
+        <tr><td><code>change</code></td><td>Change in forest metrics compared to previous data (%)</td></tr>
+        <tr><td><code>year</code></td><td>The year for which the data was recorded</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Example Request</h2>
+    <pre><code>GET https://forest-cover-prediction.up.railway.app/api/forest/1/?start_year=2010&end_year=2020</code></pre>
+
+    <h2>Example Response</h2>
+    <pre><code>{
+  "forest_name": "Mt. Kenya",
+  "data": [
+    {
+      "ndvi": 0.453,
+      "area": 720.2,
+      "density": 68.1,
+      "change": -4.5,
+      "year": 2010
+    },
+    {
+      "ndvi": 0.475,
+      "area": 722.1,
+      "density": 70.2,
+      "change": -3.8,
+      "year": 2020
+    }
+  ]
+}</code></pre>
+
+    <h2>Status Codes</h2>
+    <ul>
+      <li><strong>200 OK</strong> - Request succeeded</li>
+      <li><strong>400 Bad Request</strong> - Invalid parameters (e.g., invalid year format)</li>
+      <li><strong>404 Not Found</strong> - Forest not found</li>
+    </ul>
+  </div>
+</body>
+</html>

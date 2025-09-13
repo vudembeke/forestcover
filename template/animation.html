@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Mt. Kenya Forest Flyover</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.100/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.100/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    html, body, #cesiumContainer {
+      width: 500px; height: 500px; margin: 0; padding: 0; overflow: hidden;
+    }
+    .cesium-infoBox-defaultTable tr td:first-child {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<script>
+  Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2YmQwZTJjMi0wNmQ4LTRkYmEtOGRlMi00ZjQ5ZmE4NDJlZWYiLCJpZCI6MjkxOTUxLCJpYXQiOjE3NDQxMDE2MTJ9.ZBuHXyJAWDcTn_woqCHtRZ-QBEq5jqMcPUmIycXaZVY';
+
+  // Initialize viewer with terrain
+  const viewer = new Cesium.Viewer('cesiumContainer', {
+    terrainProvider: Cesium.createWorldTerrain(),
+    imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+    baseLayerPicker: false,
+    timeline: false,
+    animation: false
+  });
+
+  // Step 1: Initial fly to Mt. Kenya (wide view)
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(37.30803140102314, -0.15232761497091507, 50000),
+    orientation: {
+        heading: Cesium.Math.toRadians(0.0),
+        pitch: Cesium.Math.toRadians(-90.0),
+        roll: 0.0
+    },
+    duration: 5
+  });
+
+  // Step 2: Flyover path with varied altitude, heading, and pitch
+  setTimeout(() => {
+    const flyoverPath = [
+      { lon: 37.33566888256543, lat: -0.193354495712544, alt: 60000, heading: 0, pitch: -90 },
+      { lon: 37.36570962337225, lat: -0.15541750855289319, alt: 40000, heading: 30, pitch: -85 },
+      { lon: 37.293268522683796, lat: -0.16142563366025658, alt: 30000, heading: 45, pitch: -80 },
+      { lon: 37.33566888256543, lat: -0.193354495712544, alt: 70000, heading: 60, pitch: -75 },
+      { lon: 37.36570962337225, lat: -0.15541750855289319, alt: 20000, heading: 75, pitch: -70 },
+      { lon: 37.293268522683796, lat: -0.16142563366025658, alt: 120000, heading: 0, pitch: -60 }
+    ];
+
+    let speedFactor = 1;  // Variable for controlling flyover speed
+    
+    function smoothTransition(index) {
+      if (index < flyoverPath.length) {
+        const point = flyoverPath[index];
+        
+        // Dynamic speed adjustment based on altitude
+        const duration = 5 + (point.alt / 10000); // Longer durations for higher altitudes
+        
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(point.lon, point.lat, point.alt),
+          orientation: {
+            heading: Cesium.Math.toRadians(point.heading),
+            pitch: Cesium.Math.toRadians(point.pitch),
+            roll: 0.0
+          },
+          duration: duration,
+          complete: () => {
+            // Pause before moving to next point for smoother transitions
+            setTimeout(() => {
+              smoothTransition(index + 1);
+            }, 1000);
+          }
+        });
+      }
+    }
+
+    smoothTransition(0);  // Start the smooth flyover
+  }, 6000);  // Start the flyover after the initial fly-to
+</script>
+</body>
+</html>

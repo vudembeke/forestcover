@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.100/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.100/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <title>Forest Prediction Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+ 
+  <style>
+    :root {
+      --bg: #111827;
+      --card: #1f2937;
+      --text: #f3f4f6;
+      --accent: #10b981;
+      --border: #374151;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    label {
+      font-size: 16px;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    select, button {
+      background: #111827;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    select:focus, button:focus {
+      outline: 2px solid var(--accent);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+      color: var(--accent);
+    }
+
+    canvas {
+      max-width: 100%;
+    }
+
+    #cesiumContainer {
+      background: #1e293b;
+      height: 400px;
+      border-radius: 12px;
+    }
+    html, body, #cesiumContainer, .cesium-viewer {
+  height: 100%;
+  width: 100%;
+}
+
+.cesium-viewer-fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Forest Selector -->
+    <div class="card">
+      <label for="forest">Select Forest:</label>
+      <select id="forest">
+        <option value="1">Mt. Kenya Forest</option>
+        <option value="2">Mau Forest</option>
+        <option value="4">Aberdare Forest</option>
+        <option value="5">Kakamega Forest</option>
+      </select>
+    </div>
+  
+    <!-- Cesium Viewer -->
+    <div class="card">
+      <h2>Forest Map Animation</h2>
+      <div id="cesiumContainer"></div>
+    </div>
+
+    <!-- Metric Selector -->
+    <div class="card">
+      <label for="metric">Select Metric:</label>
+      <select id="metric">
+        <option value="ndvi">NDVI Mean</option>
+        <option value="area">Forest Area (sq. km)</option>
+        <option value="density">Forest Density (%)</option>
+        <option value="change">Change (%)</option>
+       
+      </select>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+      <h2 id="chart-title">Forest Data Over Time</h2>
+      <canvas id="forestChart"></canvas>
+    </div>
+
+  <script>
+    // Function to handle the API call and render graph
+    async function fetchForestData(forestId, metric) {
+        try {
+            // Request the data from the API
+            const response = await axios.get(`https://forest-cover-prediction.up.railway.app/api/forest/${forestId}/`);
+            const forestData = response.data;
+
+            // Extract the relevant metric data from the response
+            const metricData = forestData.data.map(item => item[metric]);
+            const years = forestData.data.map(item => item.year);
+
+            // Get the chart context
+            const ctx = document.getElementById('forestChart').getContext('2d');
+            
+            // If a chart already exists, destroy it before rendering a new one
+            if (window.chart) {
+                window.chart.destroy();
+            }
+
+            // Render the new chart with the selected metric
+            window.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: `${forestData.forest_name} - ${metric.toUpperCase()}`,
+                        data: metricData,
+                        borderColor: 'rgba(34, 197, 94, 1)', // green line
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)', // light green fill
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+
+            // Update chart title
+            document.getElementById('chart-title').innerText = `${forestData.forest_name} - ${metric.toUpperCase()} Over Time`;
+
+        } catch (error) {
+            console.error("There was an error fetching the forest data:", error);
+        }
+    }
+
+    // Event listeners to update the graph based on dropdown selection
+    document.getElementById('forest').addEventListener('change', function () {
+        const selectedForestId = this.value;
+        const selectedMetric = document.getElementById('metric').value;
+        fetchForestData(selectedForestId, selectedMetric);
+    });
+
+    document.getElementById('metric').addEventListener('change', function () {
+        const selectedForestId = document.getElementById('forest').value;
+        const selectedMetric = this.value;
+        fetchForestData(selectedForestId, selectedMetric);
+    });
+
+    // Fetch the initial forest data with the default forest (Mt. Kenya) and metric (NDVI)
+    fetchForestData(1, 'ndvi');
+</script>
+
+
+
+    
+
+<script>
+  Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2YmQwZTJjMi0wNmQ4LTRkYmEtOGRlMi00ZjQ5ZmE4NDJlZWYiLCJpZCI6MjkxOTUxLCJpYXQiOjE3NDQxMDE2MTJ9.ZBuHXyJAWDcTn_woqCHtRZ-QBEq5jqMcPUmIycXaZVY';
+
+  let viewer;
+
+  const flyoverPaths = {
+  1: [ // Mt. Kenya
+    { lon: 37.3080, lat: -0.1523, alt: 50000, heading: 0, pitch: -90 }, // Start view towards Mt. Kenya
+    { lon: 37.32, lat: -0.15, alt: 40000, heading: 10, pitch: -85 },    // Flyover focusing on Mt. Kenya
+    { lon: 37.34, lat: -0.14, alt: 30000, heading: 20, pitch: -75 },    // Close-up view of Mt. Kenya
+    { lon: 37.36, lat: -0.13, alt: 45000, heading: 30, pitch: -80 },    // Flyover closer to the forest
+    { lon: 37.38, lat: -0.12, alt: 55000, heading: 40, pitch: -90 },    // Flyover over Mt. Kenya
+    { lon: 37.40, lat: -0.11, alt: 60000, heading: 50, pitch: -90 },    // Moving over Mt. Kenya
+    { lon: 37.42, lat: -0.10, alt: 65000, heading: 60, pitch: -90 },    // Closer flyover towards the forest
+    { lon: 37.44, lat: -0.09, alt: 70000, heading: 70, pitch: -90 },    // Flyover showing more of the forest
+    { lon: 37.46, lat: -0.08, alt: 75000, heading: 80, pitch: -90 },    // Full view of Mt. Kenya
+    { lon: 37.48, lat: -0.07, alt: 80000, heading: 90, pitch: -90}     // Final view over Mt. Kenya
+  ],
+  2: [ // Mau
+    { lon: 35.600, lat: -0.500, alt: 50000, heading: 0, pitch: -90 },  // Start view towards Mau Forest
+    { lon: 35.615, lat: -0.495, alt: 45000, heading: 5, pitch: -85 },  // Flyover focusing on Mau Forest
+    { lon: 35.630, lat: -0.490, alt: 40000, heading: 10, pitch: -80 }, // Flyover closer to Mau Forest
+    { lon: 35.645, lat: -0.485, alt: 55000, heading: 15, pitch: -75 }, // Flyover showing Mau Forest center
+    { lon: 35.660, lat: -0.480, alt: 60000, heading: 20, pitch: -70 }, // Flyover towards the forest
+    { lon: 35.675, lat: -0.475, alt: 65000, heading: 25, pitch: -90 }, // Flyover showing the surroundings of Mau
+    { lon: 35.690, lat: -0.470, alt: 70000, heading: 30, pitch: -90 }, // Flyover above Mau Forest
+    { lon: 35.705, lat: -0.465, alt: 75000, heading: 35, pitch: -90 }, // Full view of Mau Forest
+    { lon: 35.720, lat: -0.460, alt: 80000, heading: 40, pitch: -90 }, // Flyover showing more of Mau Forest
+    { lon: 35.735, lat: -0.455, alt: 85000, heading: 45, pitch: -90 }  // Final view over Mau Forest
+  ],
+  3: [ // Aberdare
+    { lon: 36.650, lat: -0.380, alt: 50000, heading: 0, pitch: -90 },  // Start view towards Aberdare Forest
+    { lon: 36.670, lat: -0.370, alt: 45000, heading: 10, pitch: -85 }, // Flyover focusing on Aberdare Forest
+    { lon: 36.690, lat: -0.360, alt: 40000, heading: 20, pitch: -80 }, // Flyover showing Aberdare's central area
+    { lon: 36.710, lat: -0.350, alt: 55000, heading: 30, pitch: -75 }, // Flyover towards Aberdare's center
+    { lon: 36.730, lat: -0.340, alt: 60000, heading: 40, pitch: -70 }, // Flyover over Aberdare Forest
+    { lon: 36.750, lat: -0.330, alt: 65000, heading: 50, pitch: -90 }, // Flyover showing Aberdare more closely
+    { lon: 36.770, lat: -0.320, alt: 70000, heading: 60, pitch: -90}, // Full flyover of Aberdare Forest
+    { lon: 36.790, lat: -0.310, alt: 75000, heading: 70, pitch: -90 }, // Final flyover towards Aberdare
+    { lon: 36.810, lat: -0.300, alt: 80000, heading: 80, pitch: -90 }, // Flyover further showing Aberdare Forest
+    { lon: 36.830, lat: -0.290, alt: 85000, heading: 90, pitch: -90 }  // Final view of Aberdare Forest
+  ],
+  4: [ // Kakamega
+    { lon: 34.900, lat: 0.280, alt: 50000, heading: 0, pitch: -90 },    // Start view towards Kakamega Forest
+    { lon: 34.920, lat: 0.290, alt: 45000, heading: 10, pitch: -85 },   // Flyover towards Kakamega Forest
+    { lon: 34.940, lat: 0.300, alt: 40000, heading: 20, pitch: -80 },   // Flyover showing Kakamega's center
+    { lon: 34.960, lat: 0.310, alt: 55000, heading: 30, pitch: -75 },   // Flyover towards Kakamega's forest
+    { lon: 34.980, lat: 0.320, alt: 60000, heading: 40, pitch: -70 },   // Flyover showing Kakamega's central area
+    { lon: 35.000, lat: 0.330, alt: 65000, heading: 50, pitch: -90 },   // Flyover showing the forest more closely
+    { lon: 35.020, lat: 0.340, alt: 70000, heading: 60, pitch: -90 },   // Full view of Kakamega Forest
+    { lon: 35.040, lat: 0.350, alt: 75000, heading: 70, pitch: -90},   // Final flyover towards Kakamega Forest
+    { lon: 35.060, lat: 0.360, alt: 80000, heading: 80, pitch: -90 },   // Flyover further showing Kakamega Forest
+    { lon: 35.080, lat: 0.370, alt: 85000, heading: 90, pitch: -90 }    // Final view of Kakamega Forest
+  ]
+};
+
+
+
+  function initViewer() {
+    return new Cesium.Viewer('cesiumContainer', {
+      terrainProvider: Cesium.createWorldTerrain(),
+      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }),
+      baseLayerPicker: false,
+      timeline: false,
+      animation: false,
+      fullscreenButton: true
+    });
+  }
+
+  function flyOver(path, index = 0) {
+    if (index >= path.length) return;
+    const p = path[index];
+
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.alt),
+      orientation: {
+        heading: Cesium.Math.toRadians(p.heading),
+        pitch: Cesium.Math.toRadians(p.pitch),
+        roll: 0
+      },
+      duration: 5,
+      complete: () => setTimeout(() => flyOver(path, index + 1), 1000)
+    });
+  }
+
+  function loadForest(forestId) {
+    if (viewer) {
+      viewer.destroy();
+      document.getElementById('cesiumContainer').innerHTML = '';
+    }
+
+    viewer = initViewer();
+    const path = flyoverPaths[forestId];
+    if (path) flyOver(path);
+  }
+
+  document.getElementById("forest").addEventListener("change", function () {
+    const forestId = this.value;
+    loadForest(forestId);
+  });
+
+  window.onload = () => loadForest("1"); // default load Mt. Kenya
+</script>
+</body>
+</html>
