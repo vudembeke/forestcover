@@ -22,7 +22,7 @@ By combining satellite imagery with historical climate data, the system aims to 
 - **Google Earth Engine (GEE)** – Satellite imagery data.  
 - **OpenWeather API** – Historical climate data.  
 - **SQL / Database** – For storing predicted values.  
-- **JavaScript / Web Framework** – For building the user interface.  
+- **JavaScript,Html,css** – For building the user interface.  
 
 ---
 
