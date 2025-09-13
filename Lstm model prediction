@@ -1,0 +1,114 @@
+!pip install keras-tuner --upgrade
+#Importing necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+import keras_tuner as kt
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import math
+
+#loading the data
+data = pd.read_csv("/content/forest_data_combined.csv")
+print(data.head())
+print(data.columns)
+
+#Selecting the feature to predict
+target_col = ['Forest Area (sq. km)','Mean Rainfall (mm)','Mean Temperature (°C)' ]
+data = data[target_col].dropna()
+
+#Normalize the data
+scaler = MinMaxScaler()
+scaled_data = scaler.fit_transform(data)
+
+#Create sequences for LSTM
+def create_multivariate_sequences(dataset, target_index, time_steps=60):
+    x, y = [], []
+    for i in range(time_steps, len(dataset)):
+        x.append(dataset[i-time_steps:i])
+        y.append(dataset[i, target_index])  # only target column is predicted
+    return np.array(x), np.array(y)
+
+features = target_col
+target_index = features.index('Forest Area (sq. km)')  # Index of the column to predict
+X, y = create_multivariate_sequences(scaled_data, target_index, time_steps=30)
+
+#split data into testing and training
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, shuffle=False)
+
+
+#Define the Model Builder for Keras Tuner
+def build_model(hp):
+    model = Sequential()
+
+    model.add(LSTM(
+        units=hp.Int('lstm_units_1', min_value=64, max_value=256, step=32),
+        return_sequences=True,
+        input_shape=(X_train.shape[1], X_train.shape[2])
+    ))
+    model.add(Dropout(hp.Float('dropout_1', 0.1, 0.5, step=0.1)))
+
+    model.add(LSTM(units=hp.Int('lstm_units_2', min_value=64, max_value=256, step=32)))
+    model.add(Dropout(hp.Float('dropout_2', 0.1, 0.5, step=0.1)))
+
+    model.add(Dense(1))
+
+    model.compile(
+        optimizer=Adam(learning_rate=hp.Choice('learning_rate', [1e-2, 1e-3, 1e-4])),
+        loss='mean_squared_error'
+    )
+
+    return model
+
+#Set Up the Tuner
+tuner = kt.RandomSearch(build_model,objective='val_loss',max_trials=10,executions_per_trial=1,directory='my_tuner_dir',project_name='forest_cover_lstm')
+
+#Start Hyperparameter Tuning
+early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+tuner.search(X_train, y_train,epochs=50,validation_data=(X_test, y_test),callbacks=[early_stop],verbose=1)
+
+#Retrieve and Train the Best Model
+best_model = tuner.get_best_models(num_models=1)[0]
+best_model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, callbacks=[early_stop])
+
+
+# Make predictions
+predictions = best_model.predict(X_test)
+
+#Inverse Transform Only the Target Column
+# Create dummy arrays to inverse transform just the target column
+def inverse_transform_target_only(scaled_column, target_index, total_features):
+    padded = np.zeros((len(scaled_column), total_features))
+    padded[:, target_index] = scaled_column.flatten()
+    return scaler.inverse_transform(padded)[:, target_index]
+
+predicted = inverse_transform_target_only(predictions, target_index, len(features))
+actual = inverse_transform_target_only(y_test.reshape(-1,1), target_index, len(features))
+
+
+#Plot the results
+plt.figure(figsize=(12, 6))
+plt.plot(actual, label='Actual Forest Cover')
+plt.plot(predicted, label='Predicted Forest Cover')
+plt.title('LSTM - Forest Cover Prediction')
+plt.xlabel('Time')
+plt.ylabel('Forest Cover')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+mae = mean_absolute_error(actual, predicted)
+mse = mean_squared_error(actual, predicted)
+rmse = math.sqrt(mse)
+r2 = r2_score(actual, predicted)
+
+print("Evaluation Metrics:")
+print(f"MAE  (Mean Absolute Error): {mae:.4f}")
+print(f"MSE  (Mean Squared Error):  {mse:.4f}")
+print(f"RMSE (Root Mean Squared):   {rmse:.4f}")
+print(f"R²   (R-squared score):     {r2:.4f}")
